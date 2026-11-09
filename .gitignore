@@ -1,0 +1,10 @@
+# Personal data and credentials: never commit
+state/
+inbox/
+pages/
+*.pdf
+*.png
+# Local environment
+.venv/
+__pycache__/
+*.pyc

@@ -1,0 +1,68 @@
+---
+name: goodnotes-todo
+description: "Turn {{OWNER}}'s handwritten GoodNotes pages (Google Drive backup) into Microsoft To Do tasks; ask on Telegram when something is unclear."
+version: 0.2.0
+author: goodnotes-todo
+license: MIT
+metadata:
+  hermes:
+    tags: [GoodNotes, Handwriting, Microsoft To Do, Action-Items, Productivity]
+    related_skills: [document-to-action-items, ocr-and-documents]
+---
+
+# GoodNotes → Microsoft To Do
+
+{{OWNER}} writes 1:1 and work notes by hand in GoodNotes on an iPad. GoodNotes backs
+each notebook up as a PDF to Google Drive (`{{REMOTE}}`). Your job: read new
+handwriting, turn it into tasks in Microsoft To Do, and ask {{OWNER}} about anything
+you can't read or interpret.
+
+Project folder: `{{PROJECT_DIR}}` (quote the path, it may contain spaces).
+Python: `"{{PROJECT_DIR}}/.venv/bin/python"` (call it `$PY` below). Run commands from the
+project folder. Scripts in `bin/` do all file, Drive and Microsoft work. You never call
+Microsoft Graph yourself.
+
+## When to use
+
+- Scheduled run ("process my notes", hourly cron).
+- {{OWNER}} answers a clarification question on Telegram.
+- {{OWNER}} asks what is pending from their notes.
+
+## Run
+
+1. `"$PY" bin/notesync.py pending`. This prints JSON pages to read. `[]` means
+   nothing new, so stop and send no message.
+2. For each page, look at `image` (PNG). If `status` is `changed`, compare with
+   `previous_transcript` and `existing_tasks` and handle **only what is new**.
+3. Decide the tasks:
+   - **My Actions**: things {{OWNER}} must do. Sub-bullets under a heading become
+     separate tasks titled `Heading: sub-item`.
+   - **Waiting On**: things someone else owes {{OWNER}}, or "remind X / follow up with X".
+   - **Clarify**: anything you are not confident about, such as an illegible word,
+     an unclear owner, or whether a line is one task or two. Put your best guess in the notes.
+   - A Priority column or words like High/Low set `importance`. A date written on the
+     page sets `due` (YYYY-MM-DD). Never invent dates.
+   - A tick or 100% mark next to an existing task means it is done: complete it with
+     `todo.py done` (ids are in `state/tasks.json`). If unsure, ask via Clarify.
+   - Skip covers, blank templates, headings with no content, and empty bullets.
+4. Write the items as a JSON list (schema in `bin/todo.py` docstring) and run
+   `"$PY" bin/todo.py add < items.json`. Re-running is safe because duplicates are skipped.
+5. Mark the page: `"$PY" bin/notesync.py done "<notebook>" <page> page.json` with
+   `{"transcript": "<plain-text transcript>", "tasks": ["<titles added>"]}`.
+6. If you created any Clarify items, send {{OWNER}} **one** Telegram message for the
+   run: a short numbered list of questions with your best guess for each.
+   Clear tasks need no message.
+
+## When {{OWNER}} replies
+
+Match the answer to the Clarify task. Then either create the corrected task with
+`todo.py add` and complete the Clarify one (`todo.py done Clarify <id>`; ids are in
+`state/tasks.json`), or update a task with `todo.py update`. Confirm in one line.
+
+## Rules
+
+- Read-only on Google Drive. Never delete or edit tasks {{OWNER}} created by hand.
+- If `todo.py` says it is not signed in, tell {{OWNER}} to run
+  `"$PY" bin/todo.py login` in the project folder. Don't retry in a loop.
+- If `notesync.py` fails on rclone, report the error once; don't retry in a loop.
+{{KNOWN_NAMES_LINE}}
